@@ -1,14 +1,18 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../state/AuthContext';
+import { UserRole } from '../api/types';
 
 export default function Signup() {
   const { signup } = useAuth();
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [role, setRole] = useState<UserRole>(UserRole.Customer);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +25,13 @@ export default function Signup() {
     }
     setLoading(true);
     try {
-      await signup(username.trim(), password);
+      await signup({
+        email: email.trim(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        role,
+      });
       navigate('/', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Signup failed');
@@ -43,15 +53,50 @@ export default function Signup() {
           </div>
         )}
         <form onSubmit={onSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">First Name</label>
+              <input
+                className="input mt-1"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                autoComplete="given-name"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Last Name</label>
+              <input
+                className="input mt-1"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                autoComplete="family-name"
+                required
+              />
+            </div>
+          </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Username</label>
+            <label className="block text-sm font-medium text-gray-700">Email</label>
             <input
+              type="email"
               className="input mt-1"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               required
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Role</label>
+            <select
+              className="input mt-1"
+              value={role}
+              onChange={(e) => setRole(Number(e.target.value) as UserRole)}
+            >
+              <option value={UserRole.Customer}>Customer</option>
+              <option value={UserRole.Agent}>Agent</option>
+              <option value={UserRole.Admin}>Admin</option>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Password</label>

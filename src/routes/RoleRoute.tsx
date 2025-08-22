@@ -1,8 +1,13 @@
 import type { PropsWithChildren } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
+import { UserRole } from '../api/types';
 
-const ProtectedRoute = ({ children }: PropsWithChildren) => {
+interface RoleRouteProps extends PropsWithChildren {
+  allow: UserRole[];
+}
+
+const RoleRoute = ({ allow, children }: RoleRouteProps) => {
   const { user, restoring } = useAuth();
   const location = useLocation();
 
@@ -18,7 +23,12 @@ const ProtectedRoute = ({ children }: PropsWithChildren) => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  if (!allow.includes(user.role)) {
+    // Redirect unauthorized users to dashboard
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return <>{children}</>;
 };
 
-export default ProtectedRoute;
+export default RoleRoute;

@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
@@ -6,8 +6,16 @@ import App from './App';
 import { AuthProvider } from './state/AuthContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Home from './pages/Home';
 import ProtectedRoute from './routes/ProtectedRoute';
+import RoleRoute from './routes/RoleRoute';
+import { UserRole } from './api/types';
+import Loading from './components/Loading';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const TicketsList = lazy(() => import('./pages/TicketsList'));
+const TicketDetail = lazy(() => import('./pages/TicketDetail'));
+const TicketNew = lazy(() => import('./pages/TicketNew'));
+const Users = lazy(() => import('./pages/Users'));
 
 const router = createBrowserRouter([
   {
@@ -17,7 +25,58 @@ const router = createBrowserRouter([
         <App />
       </ProtectedRoute>
     ),
-    children: [{ index: true, element: <Home /> }],
+    children: [
+      {
+        index: true,
+        element: (
+          <Suspense fallback={<Loading />}>
+            <Dashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <Suspense fallback={<Loading />}>
+            <Dashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'tickets',
+        element: (
+          <Suspense fallback={<Loading />}>
+            <TicketsList />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'tickets/new',
+        element: (
+          <Suspense fallback={<Loading />}>
+            <TicketNew />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'tickets/:id',
+        element: (
+          <Suspense fallback={<Loading />}>
+            <TicketDetail />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'users',
+        element: (
+          <RoleRoute allow={[UserRole.Admin]}>
+            <Suspense fallback={<Loading />}>
+              <Users />
+            </Suspense>
+          </RoleRoute>
+        ),
+      },
+    ],
   },
   { path: '/login', element: <Login /> },
   { path: '/signup', element: <Signup /> },

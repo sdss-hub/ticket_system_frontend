@@ -1,82 +1,92 @@
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
-
-export type User = {
-  username: string;
-};
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type PropsWithChildren,
+} from 'react';
+import type { UserDto } from '../api/types';
+import { AuthApi } from '../api/auth';
+import { setApiAuthTokenGetter } from '../api/client';
 
 type AuthContextType = {
-  user: User | null;
-  login: (username: string, password: string) => Promise<void>;
-  signup: (username: string, password: string) => Promise<void>;
+  user: UserDto | null;
+  token: string | null;
+  restoring: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (params: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: number;
+  }) => Promise<void>;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USERS_KEY = 'app_users_v1';
-const SESSION_KEY = 'app_session_v1';
-
-type StoredUsers = Record<string, { password: string }>;
-
-function readUsers(): StoredUsers {
-  try {
-    const raw = localStorage.getItem(USERS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeUsers(users: StoredUsers) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function saveSession(username: string | null) {
-  if (username) localStorage.setItem(SESSION_KEY, username);
-  else localStorage.removeItem(SESSION_KEY);
-}
-
-function readSession(): string | null {
-  return localStorage.getItem(SESSION_KEY);
-}
+const TOKEN_KEY = 'app_auth_token_v1';
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserDto | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState<boolean>(true);
 
+  // Wire token to API client
   useEffect(() => {
-    const existing = readSession();
-    if (existing) setUser({ username: existing });
+    setApiAuthTokenGetter(() => token ?? undefined);
+  }, [token]);
+
+  // Restore session on mount
+  useEffect(() => {
+    const existing = localStorage.getItem(TOKEN_KEY);
+    if (existing) {
+      setToken(existing);
+      AuthApi.me()
+        .then((u) => setUser(u))
+        .catch(() => {
+          localStorage.removeItem(TOKEN_KEY);
+          setToken(null);
+          setUser(null);
+        })
+        .finally(() => setRestoring(false));
+    } else {
+      setRestoring(false);
+    }
   }, []);
 
-  const login = async (username: string, password: string) => {
-    const users = readUsers();
-    const entry = users[username];
-    await new Promise((r) => setTimeout(r, 400));
-    if (!entry || entry.password !== password) {
-      throw new Error('Invalid username or password');
-    }
-    setUser({ username });
-    saveSession(username);
+  const login = async (email: string, password: string) => {
+    const res = await AuthApi.login({ email, password });
+    setToken(res.token);
+    localStorage.setItem(TOKEN_KEY, res.token);
+    setUser(res.user);
   };
 
-  const signup = async (username: string, password: string) => {
-    const users = readUsers();
-    await new Promise((r) => setTimeout(r, 400));
-    if (users[username]) {
-      throw new Error('Username already exists');
-    }
-    users[username] = { password };
-    writeUsers(users);
-    setUser({ username });
-    saveSession(username);
+  const signup = async (params: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: number;
+  }) => {
+    const res = await AuthApi.register(params);
+    setToken(res.token);
+    localStorage.setItem(TOKEN_KEY, res.token);
+    setUser(res.user);
   };
 
   const logout = () => {
     setUser(null);
-    saveSession(null);
+    setToken(null);
+    localStorage.removeItem(TOKEN_KEY);
   };
 
-  const value = useMemo(() => ({ user, login, logout, signup }), [user]);
+  const value = useMemo(
+    () => ({ user, token, restoring, login, logout, signup }),
+    [user, token, restoring],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

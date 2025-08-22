@@ -8,7 +8,7 @@ export default function Login() {
   const location = useLocation() as any;
   const from = location.state?.from?.pathname || '/';
 
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      await login(username.trim(), password);
+      await login(email.trim(), password);
       navigate(from, { replace: true });
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -41,12 +41,13 @@ export default function Login() {
         )}
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Username</label>
+            <label className="block text-sm font-medium text-gray-700">Email</label>
             <input
+              type="email"
               className="input mt-1"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               required
             />
           </div>
