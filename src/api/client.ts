@@ -12,7 +12,7 @@ export class ApiClient {
 
   constructor(options?: { baseUrl?: string; getAuthToken?: () => string | undefined }) {
     const raw =
-      options?.baseUrl ?? import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api';
+      options?.baseUrl ?? import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5104/api';
     this.baseUrl = raw.endsWith('/') ? raw : raw + '/';
     this.getAuthToken = options?.getAuthToken;
   }
@@ -50,13 +50,29 @@ export class ApiClient {
     const token = this.getAuthToken?.();
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
+    // Bypass ngrok browser warning page which otherwise returns HTML
+    try {
+      const u = new URL(url);
+      if (u.hostname.includes('ngrok')) {
+        headers['ngrok-skip-browser-warning'] = 'true';
+      }
+    } catch {
+      // ignore URL parsing issues
+    }
+
     const hasBody = options?.body !== undefined;
-    if (hasBody && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+    const isFormData =
+      typeof FormData !== 'undefined' && options?.body instanceof FormData;
+    const isBlob = typeof Blob !== 'undefined' && options?.body instanceof Blob;
+    const isBinary = isFormData || isBlob;
+    if (hasBody && !headers['Content-Type'] && !isBinary) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const res = await fetch(url, {
       method: options?.method ?? 'GET',
       headers,
-      body: hasBody ? JSON.stringify(options?.body) : undefined,
+      body: hasBody ? (isBinary ? (options!.body as any) : JSON.stringify(options?.body)) : undefined,
     });
 
     const isJson = res.headers.get('content-type')?.includes('application/json');
@@ -80,3 +96,4 @@ export const api = new ApiClient();
 export function setApiAuthTokenGetter(getter?: () => string | undefined) {
   api.setAuthTokenGetter(getter);
 }
+

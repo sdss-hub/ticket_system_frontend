@@ -9,6 +9,8 @@ import type { TicketResponseDto, UserDto } from '../api/types';
 import { TicketStatus, UserRole } from '../api/types';
 import { useAuth } from '../state/AuthContext';
 import { UsersApi } from '../api/users';
+import { AiApi, type TicketInsightDto } from '../api/ai';
+import { AttachmentsApi } from '../api/attachments';
 
 export default function TicketDetail() {
   const { id } = useParams();
@@ -22,6 +24,10 @@ export default function TicketDetail() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [agents, setAgents] = useState<UserDto[]>([]);
   const [assigning, setAssigning] = useState(false);
+  const [insights, setInsights] = useState<TicketInsightDto[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -47,6 +53,21 @@ export default function TicketDetail() {
       .then(setAgents)
       .catch(() => setAgents([]));
   }, []);
+
+  const loadInsights = async () => {
+    if (!Number.isFinite(ticketId)) return;
+    try {
+      const list = await AiApi.insights(ticketId);
+      setInsights(list);
+    } catch {
+      setInsights([]);
+    }
+  };
+
+  useEffect(() => {
+    loadInsights();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketId]);
 
   const onAddComment = async () => {
     if (!ticket || !comment.trim() || !user) return;
@@ -104,6 +125,43 @@ export default function TicketDetail() {
     }
   };
 
+  const onAnalyze = async () => {
+    if (!Number.isFinite(ticketId)) return;
+    setAnalyzing(true);
+    try {
+      await AiApi.analyzeTicket(ticketId);
+      await loadInsights();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to analyze ticket');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const onUpload = async () => {
+    if (!ticket || !user || !fileToUpload) return;
+    setUploading(true);
+    try {
+      await AttachmentsApi.upload(ticket.id, fileToUpload, user.id);
+      setFileToUpload(null);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to upload file');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onDeleteAttachment = async (attachmentId: number) => {
+    if (!user) return;
+    try {
+      await AttachmentsApi.delete(attachmentId, user.id);
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete attachment');
+    }
+  };
+
   if (!Number.isFinite(ticketId)) {
     return <ErrorState message="Invalid ticket id" />;
   }
@@ -129,6 +187,34 @@ export default function TicketDetail() {
               </div>
             </div>
             <p className="mt-4 text-sm text-gray-700 whitespace-pre-line">{ticket.description}</p>
+          </section>
+          <section className="card p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">AI Insights</h2>
+              <button className="btn-primary" onClick={onAnalyze} disabled={analyzing}>
+                {analyzing ? 'Analyzing…' : 'Re-analyze'}
+              </button>
+            </div>
+            <div className="mt-3 space-y-2">
+              {insights.length === 0 ? (
+                <div className="text-sm text-gray-600">No insights yet.</div>
+              ) : (
+                insights.map((i) => (
+                  <div key={i.id} className="rounded-md border border-gray-200 p-3">
+                    <div className="text-xs text-gray-500 flex items-center justify-between">
+                      <span>{i.insightType}</span>
+                      <span>Conf: {(i.confidence * 100).toFixed(0)}%</span>
+                    </div>
+                    <pre className="mt-1 text-xs text-gray-700 whitespace-pre-wrap">
+                      {i.data}
+                    </pre>
+                    <div className="mt-1 text-xs text-gray-500">
+                      {new Date(i.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </section>
           <section className="card p-6">
             <h2 className="text-lg font-semibold text-gray-900">Comments</h2>
@@ -161,6 +247,46 @@ export default function TicketDetail() {
               >
                 {addingComment ? 'Posting…' : 'Post'}
               </button>
+            </div>
+          </section>
+          <section className="card p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Attachments</h2>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
+                />
+                <button className="btn-primary" onClick={onUpload} disabled={uploading || !fileToUpload}>
+                  {uploading ? 'Uploading…' : 'Upload'}
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 space-y-2">
+              {ticket.attachments.length === 0 ? (
+                <div className="text-sm text-gray-600">No attachments.</div>
+              ) : (
+                ticket.attachments.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between rounded-md border border-gray-200 p-3 text-sm">
+                    <div>
+                      <div className="font-medium">{a.originalFileName || a.fileName}</div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(a.createdAt).toLocaleString()} · {a.mimeType}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a className="btn-secondary" href={AttachmentsApi.downloadUrl(a.id)}>
+                        Download
+                      </a>
+                      {user && (
+                        <button className="btn-danger" onClick={() => onDeleteAttachment(a.id)}>
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </section>
         </div>

@@ -8,10 +8,10 @@ interface RoleRouteProps extends PropsWithChildren {
 }
 
 const RoleRoute = ({ allow, children }: RoleRouteProps) => {
-  const { user, restoring } = useAuth();
+  const { user, restoring, token } = useAuth();
   const location = useLocation();
 
-  if (restoring) {
+  if (restoring || (token && !user)) {
     return (
       <div className="min-h-screen grid place-items-center">
         <div className="text-sm text-gray-600">Checking session…</div>

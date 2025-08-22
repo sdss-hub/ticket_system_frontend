@@ -5,6 +5,8 @@ import { useAuth } from '../state/AuthContext';
 import { CategoriesApi } from '../api/categories';
 import { Priority, type CategoryDto } from '../api/types';
 import { useEffect } from 'react';
+import { AiApi } from '../api/ai';
+import { AttachmentsApi } from '../api/attachments';
 
 export default function TicketNew() {
   const navigate = useNavigate();
@@ -18,12 +20,32 @@ export default function TicketNew() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [assisting, setAssisting] = useState(false);
 
   useEffect(() => {
     CategoriesApi.list()
       .then(setCategories)
       .catch(() => setCategories([]));
   }, []);
+
+  const onAiAssist = async () => {
+    if (!title.trim() || !description.trim()) return;
+    setAssisting(true);
+    setError(null);
+    try {
+      const res = await AiApi.categorize({ title: title.trim(), description: description.trim() });
+      // Map suggested category name to id if possible
+      const match = categories.find(
+        (c) => c.name.toLowerCase() === res.suggestedCategory.toLowerCase(),
+      );
+      if (match) setCategoryId(match.id);
+      if (res.suggestedPriority) setPriority(res.suggestedPriority as any);
+    } catch (e: any) {
+      setError(e?.message || 'AI assistance failed');
+    } finally {
+      setAssisting(false);
+    }
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -39,12 +61,12 @@ export default function TicketNew() {
         priority: priority === '' ? undefined : (priority as Priority),
         dueDate: dueDate || undefined,
       });
-      // Stub: files upload not implemented yet
+      // Upload attachments if any
       if (files && files.length > 0) {
-        console.info(
-          'File upload stub - selected files:',
-          Array.from(files).map((f) => f.name),
-        );
+        const toUpload = Array.from(files);
+        for (const f of toUpload) {
+          await AttachmentsApi.upload(created.id, f, user.id);
+        }
       }
       navigate(`/tickets/${created.id}`);
     } finally {
@@ -79,6 +101,16 @@ export default function TicketNew() {
             rows={6}
             required
           />
+          <div className="mt-2">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onAiAssist}
+              disabled={assisting || !title.trim() || !description.trim()}
+            >
+              {assisting ? 'Analyzing…' : 'AI Assist: Categorize & Priority'}
+            </button>
+          </div>
         </div>
         <div className="grid sm:grid-cols-3 gap-3">
           <div>
@@ -125,7 +157,7 @@ export default function TicketNew() {
         <div>
           <label className="block text-sm font-medium text-gray-700">Attachments</label>
           <input className="mt-1" type="file" multiple onChange={(e) => setFiles(e.target.files)} />
-          <p className="mt-1 text-xs text-gray-500">Upload stub only; files are not sent yet.</p>
+          <p className="mt-1 text-xs text-gray-500">Supported types depend on server configuration.</p>
         </div>
         <div className="flex items-center justify-end gap-2">
           <button type="submit" className="btn-primary" disabled={submitting}>

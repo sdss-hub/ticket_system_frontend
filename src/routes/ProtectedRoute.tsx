@@ -3,10 +3,10 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../state/AuthContext';
 
 const ProtectedRoute = ({ children }: PropsWithChildren) => {
-  const { user, restoring } = useAuth();
+  const { user, restoring, token } = useAuth();
   const location = useLocation();
 
-  if (restoring) {
+  if (restoring || (token && !user)) {
     return (
       <div className="min-h-screen grid place-items-center">
         <div className="text-sm text-gray-600">Checking session…</div>

@@ -7,6 +7,7 @@ import type {
   UserDto,
   CommentDto,
 } from './types';
+import type { AgentSuggestionResult } from './ai';
 
 export const TicketsApi = {
   list: (filters?: TicketFilters) =>
@@ -45,5 +46,11 @@ export const TicketsApi = {
       params: { userId },
     }),
 
-  suggestAgent: (id: number) => api.request<UserDto>(`/tickets/${id}/suggest-agent`),
+  // Bridge to AI service endpoint; returns just the suggested agent for existing callers
+  suggestAgent: async (id: number) => {
+    const res = await api.request<AgentSuggestionResult>(`/ai/suggest-agent/${id}`, {
+      method: 'POST',
+    });
+    return res.suggestedAgent as UserDto;
+  },
 };
