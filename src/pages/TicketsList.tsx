@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 import Loading from '../components/Loading';
 import ErrorState from '../components/ErrorState';
@@ -7,8 +8,11 @@ import { TicketsApi } from '../api/tickets';
 import { TicketResponseDto, TicketStatus, Priority, UserDto, UserRole } from '../api/types';
 import FilterPanel, { type TicketFiltersUI } from '../components/FilterPanel';
 import { UsersApi } from '../api/users';
+import { useAuth } from '../state/AuthContext';
 
 export default function TicketsList() {
+  const { user } = useAuth();
+  const location = useLocation();
   const [tickets, setTickets] = useState<TicketResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,15 +23,42 @@ export default function TicketsList() {
   const [page, setPage] = useState(1);
   const pageSize = 9;
 
+  // Determine page type based on route
+  const pageType = useMemo(() => {
+    if (location.pathname === '/tickets/assigned') return 'assigned';
+    if (location.pathname === '/tickets/available') return 'available';
+    return 'all';
+  }, [location.pathname]);
+
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await TicketsApi.list({
-        search,
-        status: filters.status,
-        agentId: filters.agentId,
-      });
+      let res: TicketResponseDto[];
+      
+      if (pageType === 'assigned' && user) {
+        // Load tickets assigned to current agent
+        res = await TicketsApi.list({
+          search,
+          status: filters.status,
+          agentId: user.id,
+        });
+      } else if (pageType === 'available') {
+        // Load unassigned tickets
+        res = await TicketsApi.list({
+          search,
+          status: filters.status,
+          agentId: undefined, // Unassigned tickets
+        });
+      } else {
+        // Load all tickets (admin view)
+        res = await TicketsApi.list({
+          search,
+          status: filters.status,
+          agentId: filters.agentId,
+        });
+      }
+      
       setTickets(res);
     } catch (e: any) {
       setError(e?.message || 'Failed to load tickets');
@@ -68,7 +99,11 @@ export default function TicketsList() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Tickets</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">
+          {pageType === 'assigned' ? 'My Assigned Tickets' : 
+           pageType === 'available' ? 'Available Tickets' : 
+           'All Tickets'}
+        </h1>
       </div>
       <div className="card p-4 flex items-center justify-between gap-4">
         <SearchBar

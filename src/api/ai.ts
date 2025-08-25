@@ -7,12 +7,9 @@ export interface CategorizeRequest {
 }
 
 export interface CategorizeResponse {
-  suggestedCategory: string;
-  suggestedPriority: number;
-  sentimentScore: number;
-  sentimentLabel: string;
-  confidence: { categorization: number; priority: number; sentiment: number };
-  processedAt: string;
+  categoryId: number;
+  categoryName: string;
+  confidence: number;
 }
 
 export interface SuggestResponseRequest {
@@ -23,36 +20,23 @@ export interface SuggestResponseRequest {
 export interface SuggestResponseResult {
   suggestedResponse: string;
   confidence: number;
-  generatedAt: string;
-  tips: string[];
 }
 
 export interface AgentSuggestionResult {
-  suggestedAgent: UserDto;
-  reasoning: string;
+  agentId: number;
+  agentName: string;
   confidence: number;
-  alternativeAgents: Array<{ id: number; fullName: string; currentWorkload: number }>;
-  processedAt: string;
 }
 
 export interface TicketInsightDto {
-  id: number;
-  insightType: 'Categorization' | 'Sentiment' | 'Priority';
-  confidence: number;
-  data: string; // JSON string
-  createdAt: string;
+  sentiment: number;
+  categoryPrediction: { categoryId: number; categoryName: string; confidence: number };
+  priorityPrediction: string;
 }
 
 export interface AnalyzeTicketResult {
-  ticketId: number;
-  analysis: {
-    suggestedCategory: string;
-    suggestedPriority: number;
-    sentimentScore: number;
-    sentimentLabel: string;
-  };
-  insightsCreated: number;
-  processedAt: string;
+  analysis: string;
+  confidence: number;
 }
 
 export const AiApi = {

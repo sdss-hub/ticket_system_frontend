@@ -17,6 +17,7 @@ export const TicketsApi = {
         customerId: filters?.customerId,
         agentId: filters?.agentId,
         search: filters?.search,
+        includeEscalated: filters?.includeEscalated,
       },
     }),
 
@@ -51,6 +52,11 @@ export const TicketsApi = {
     const res = await api.request<AgentSuggestionResult>(`/ai/suggest-agent/${id}`, {
       method: 'POST',
     });
-    return res.suggestedAgent as UserDto;
+    // Convert AI response to UserDto format for compatibility
+    return {
+      id: res.agentId,
+      fullName: res.agentName,
+      // Other fields will be filled by actual user lookup if needed
+    } as UserDto;
   },
 };

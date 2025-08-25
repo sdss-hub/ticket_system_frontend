@@ -45,9 +45,31 @@ const router = createBrowserRouter([
       {
         path: 'tickets',
         element: (
-          <Suspense fallback={<Loading />}>
-            <TicketsList />
-          </Suspense>
+          <RoleRoute allow={[UserRole.Admin]}>
+            <Suspense fallback={<Loading />}>
+              <TicketsList />
+            </Suspense>
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'tickets/assigned',
+        element: (
+          <RoleRoute allow={[UserRole.Agent]}>
+            <Suspense fallback={<Loading />}>
+              <TicketsList />
+            </Suspense>
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'tickets/available',
+        element: (
+          <RoleRoute allow={[UserRole.Agent]}>
+            <Suspense fallback={<Loading />}>
+              <TicketsList />
+            </Suspense>
+          </RoleRoute>
         ),
       },
       {

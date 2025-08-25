@@ -3,7 +3,7 @@ import type { AttachmentDto } from './types';
 
 export interface UploadResponse {
   message: string;
-  attachment: AttachmentDto;
+  attachmentId: number;
 }
 
 export const AttachmentsApi = {

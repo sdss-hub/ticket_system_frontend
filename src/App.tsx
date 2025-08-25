@@ -22,31 +22,61 @@ export default function App() {
               >
                 Dashboard
               </NavLink>
-              <NavLink
-                to="/tickets"
-                className={({ isActive }) =>
-                  isActive ? 'text-primary-700 font-medium' : 'text-gray-600 hover:text-gray-900'
-                }
-              >
-                Tickets
-              </NavLink>
-              <NavLink
-                to="/tickets/new"
-                className={({ isActive }) =>
-                  isActive ? 'text-primary-700 font-medium' : 'text-gray-600 hover:text-gray-900'
-                }
-              >
-                New Ticket
-              </NavLink>
-              {user?.role === UserRole.Admin && (
+              {user?.role === UserRole.Customer ? (
                 <NavLink
-                  to="/users"
+                  to="/tickets/new"
                   className={({ isActive }) =>
                     isActive ? 'text-primary-700 font-medium' : 'text-gray-600 hover:text-gray-900'
                   }
                 >
-                  Users
+                  New Ticket
                 </NavLink>
+              ) : user?.role === UserRole.Agent ? (
+                <>
+                  <NavLink
+                    to="/tickets/assigned"
+                    className={({ isActive }) =>
+                      isActive ? 'text-primary-700 font-medium' : 'text-gray-600 hover:text-gray-900'
+                    }
+                  >
+                    My Tickets
+                  </NavLink>
+                  <NavLink
+                    to="/tickets/available"
+                    className={({ isActive }) =>
+                      isActive ? 'text-primary-700 font-medium' : 'text-gray-600 hover:text-gray-900'
+                    }
+                  >
+                    Available Tickets
+                  </NavLink>
+                </>
+              ) : (
+                <>
+                  <NavLink
+                    to="/tickets"
+                    className={({ isActive }) =>
+                      isActive ? 'text-primary-700 font-medium' : 'text-gray-600 hover:text-gray-900'
+                    }
+                  >
+                    All Tickets
+                  </NavLink>
+                  <NavLink
+                    to="/tickets/new"
+                    className={({ isActive }) =>
+                      isActive ? 'text-primary-700 font-medium' : 'text-gray-600 hover:text-gray-900'
+                    }
+                  >
+                    New Ticket
+                  </NavLink>
+                  <NavLink
+                    to="/users"
+                    className={({ isActive }) =>
+                      isActive ? 'text-primary-700 font-medium' : 'text-gray-600 hover:text-gray-900'
+                    }
+                  >
+                    Users
+                  </NavLink>
+                </>
               )}
             </nav>
           </div>
